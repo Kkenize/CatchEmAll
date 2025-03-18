@@ -1,5 +1,5 @@
 //
-//  Creatures.swift
+//  CreatureDetail.swift
 //  CatchEmAll
 //
 //  Created by Zhejun Zhang on 3/17/25.
@@ -8,16 +8,21 @@
 import Foundation
 
 @Observable
-class Creatures {
+class CreatureDetail {
     private struct Returned: Codable {
-        var count: Int
-        var next: String?
-        var results: [Creature]
+        var height: Double
+        var weight: Double
+        var sprites: Sprite
     }
     
-    var urlString = "https://pokeapi.co/api/v2/pokemon"
-    var count = 0
-    var creaturesArray: [Creature] = []
+    struct Sprite: Codable {
+        var front_default: String
+    }
+    
+    var urlString = ""
+    var height = 0.0
+    var weight = 0.0
+    var imageURL = ""
     
     func getData() async {
         print("We are accessing the url \(urlString)")
@@ -33,11 +38,9 @@ class Creatures {
             guard let returned = try? JSONDecoder().decode(Returned.self, from: data) else {
                 return
             }
-            Task { @MainActor in
-                self.count = returned.count
-                self.urlString = returned.next ?? ""
-                self.creaturesArray = self.creaturesArray + returned.results
-            }
+            self.height = returned.height
+            self.weight = returned.weight
+            self.imageURL = returned.sprites.front_default
         } catch {
             print("Error: could not get data from \(urlString)")
         }
