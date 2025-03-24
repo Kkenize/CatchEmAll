@@ -8,39 +8,69 @@
 import SwiftUI
 
 struct CreaturesListView: View {
-    var creatures = Creatures()
+    @State var creatures = Creatures()
+    @State private var searchableText = ""
     
     var body: some View {
         NavigationStack {
-            List(0..<creatures.creaturesArray.count, id:\.self) { index in
-                LazyVStack {
-                    NavigationLink {
-                        DetailView(creature: creatures.creaturesArray[index])
-                    } label: {
-                        Text("\(index+1). \(creatures.creaturesArray[index].name.capitalized)")
-                            .font(.title2)
+            ZStack {
+                List(searchResults) { creature in
+                    LazyVStack {
+                        NavigationLink {
+                            DetailView(creature: creature)
+                        } label: {
+                            Text("\(returnIndex(of: creature)). \(creature.name.capitalized)")
+                                .font(.title2)
+                        }
+                    }
+                    .task {
+                        await creatures.loadNextIfNeeded(creature: creature)
                     }
                 }
-                .task {
-                    guard let lastCreature = creatures.creaturesArray.last else {
-                        return
+                .listStyle(.plain)
+                .navigationTitle("Pokemon")
+                .toolbar {
+                    ToolbarItem(placement: .bottomBar) {
+                        Button("Load All") {
+                            Task {
+                                await creatures.loadAll()
+                            }
+                        }
                     }
-                    if creatures.creaturesArray[index].name == lastCreature.name && creatures.urlString.hasPrefix("http") {
-                        await creatures.getData()
+                    
+                    ToolbarItem(placement: .status) {
+                        Text("\(creatures.creaturesArray.count) of \(creatures.count) creatures")
                     }
                 }
-            }
-            .listStyle(.plain)
-            .navigationTitle("Pokemon")
-            .toolbar {
-                ToolbarItem(placement: .status) {
-                    Text("\(creatures.creaturesArray.count) of \(creatures.count) creatures")
+                .searchable(text: $searchableText)
+                
+                if creatures.isLoading {
+                    ProgressView()
+                        .tint(.red)
+                        .scaleEffect(4)
                 }
             }
         }
         .task {
             await creatures.getData()
         }
+    }
+    
+    var searchResults: [Creature] {
+        if searchableText.isEmpty {
+            return creatures.creaturesArray
+        } else {
+            return creatures.creaturesArray.filter {
+                $0.name.capitalized.contains(searchableText)
+            }
+        }
+    }
+    
+    func returnIndex(of creature: Creature) -> Int {
+        guard let index = creatures.creaturesArray.firstIndex(where: {$0.name == creature.name}) else {
+            return 0
+        }
+        return index + 1
     }
 }
 
